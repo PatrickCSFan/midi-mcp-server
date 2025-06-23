@@ -14,10 +14,10 @@ import MidiWriter from 'midi-writer-js';
 
 interface MidiNote {
   pitch: number | string;
-  beat?: number; // 拍単位での位置（1.0 = 1拍目、1.5 = 1拍目と2拍目の間）
+  beat?: number; // Position in beats (1.0 = first beat, 1.5 = between first and second beat)
   startTime?: number;
   time?: number;
-  duration: string; // 文字列型に変更
+  duration: string; // Changed to string type
   velocity?: number;
   channel?: number;
 }
@@ -52,7 +52,7 @@ class MidiMcpServer {
         {
           capabilities: {
             tools: {},
-            // バッチ処理をサポートすることを明示
+            // Explicitly indicate that batch processing is supported
             batching: {
               supported: true
             }
@@ -166,7 +166,7 @@ class MidiMcpServer {
               output_path: string;
             };
 
-            // 進捗通知を送信
+            // Send progress notification
             this.server.notification({
               method: "notifications/progress",
               params: {
@@ -177,7 +177,7 @@ class MidiMcpServer {
 
             let composition: MidiComposition;
 
-            // compositionとcomposition_fileの両方が指定されていない場合はエラー
+            // Error if neither composition nor composition_file is specified
             if (!args.composition && !args.composition_file) {
               throw new McpError(
                   ErrorCode.InvalidParams,
@@ -186,7 +186,7 @@ class MidiMcpServer {
             }
 
             try {
-              // composition_fileが指定されている場合はファイルから読み込む
+              // If composition_file is specified, load it from the file
               if (args.composition_file) {
                 try {
                   const fileContent = fs.readFileSync(args.composition_file, 'utf8');
@@ -203,24 +203,24 @@ class MidiMcpServer {
                 composition = args.composition as MidiComposition;
               }
 
-              // 数値のdurationを文字列に変換
+              // Convert numeric durations to strings
               composition.tracks.forEach(track => {
                 track.notes.forEach(note => {
                   if (typeof note.duration === 'number') {
-                    // 数値のdurationを適切な文字列に変換
+                    // Convert numeric durations to the appropriate string
                     switch (note.duration) {
                       case 0.125: note.duration = '32'; break;
                       case 0.25: note.duration = '16'; break;
                       case 0.5: note.duration = '8'; break;
                       case 1: note.duration = '4'; break;
                       case 2: note.duration = '2'; break;
-                      default: note.duration = '4'; // デフォルト値
+                      default: note.duration = '4'; // Default value
                     }
                   }
                 });
               });
 
-              // time属性をstartTimeに変換
+              // Convert the time property to startTime
               composition.tracks.forEach(track => {
                 track.notes.forEach(note => {
                   if ('time' in note && note.startTime === undefined) {
@@ -243,7 +243,7 @@ class MidiMcpServer {
                 args.output_path
             );
 
-            // 完了通知
+            // Completion notification
             this.server.notification({
               method: "notifications/progress",
               params: {
@@ -283,30 +283,30 @@ class MidiMcpServer {
   }
 
   private convertBeatToWait(beat: number, bpm: number): string {
-    // MIDIライターのwait形式に変換
+    // Convert to MIDI writer wait format
     const PPQ = 128;
 
-    // beatは1から始まるので、実際の位置を計算するには1を引く
-    // 例: beat 1.0は実際には0拍目（曲の先頭）
+    // Beats start at 1, so subtract 1 to get the actual position
+    // Example: beat 1.0 is actually the 0th beat (start of the piece)
     const adjustedBeat = beat - 1;
 
-    // 拍をティックに変換
+    // Convert beats to ticks
     const ticks = Math.round((adjustedBeat * PPQ) / bpm);
 
     return `T${ticks}`;
   }
 
   private async processMidiComposition(composition: MidiComposition): Promise<void> {
-    // 大きなcompositionを処理する場合、トラックごとに分割して処理
-    const batchSize = 50; // 一度に処理するノート数
+    // When processing a large composition, split it by track
+    const batchSize = 50; // Number of notes to process at once
     const promises: Promise<any>[] = [];
 
-    // 進捗通知用の変数
+    // Variables for progress notifications
     const totalTracks = composition.tracks.length;
     let processedTracks = 0;
 
     for (const track of composition.tracks) {
-      // トラックのノートを適切なサイズに分割
+      // Split track notes into manageable chunks
       if (track.notes.length > batchSize) {
         const chunks = this.chunkArray(track.notes, batchSize);
         const chunkPromises = chunks.map(chunk => this.processNoteChunk(chunk));
@@ -316,7 +316,7 @@ class MidiMcpServer {
       }
 
       processedTracks++;
-      // 進捗を更新
+        // Update progress
       const progress = Math.floor((processedTracks / totalTracks) * 100);
       this.server.notification({
         method: "notifications/progress",
@@ -337,17 +337,17 @@ class MidiMcpServer {
   }
 
   private async processNoteChunk(notes: MidiNote[]): Promise<void> {
-    // ノートチャンクの処理ロジック
+    // Logic to process a chunk of notes
     return new Promise((resolve) => {
-      // 各ノートの処理（実際の処理はMIDIファイル生成時に行われる）
+        // Handle each note (actual processing occurs when generating the MIDI file)
       resolve();
     });
   }
 
   private async processTrack(track: MidiTrack): Promise<void> {
-    // トラック全体の処理ロジック
+    // Logic to process an entire track
     return new Promise((resolve) => {
-      // トラックの処理（実際の処理はMIDIファイル生成時に行われる）
+        // Handle the track (actual processing occurs when generating the MIDI file)
       resolve();
     });
   }
@@ -358,34 +358,34 @@ class MidiMcpServer {
       outputPath: string
   ): Promise<string> {
     try {
-      // 大きなcompositionを前処理
+      // Preprocess large compositions
       await this.processMidiComposition(composition);
 
-      // MidiWriterJSを使用してMIDIファイルを生成
+      // Generate the MIDI file using MidiWriterJS
       const tracks: any[] = [];
 
-      // 各トラックを処理
+      // Process each track
       composition.tracks.forEach((trackData, trackIndex) => {
-        // midi-writer-jsの型ファイルがおかしいっぽい。
+        // The midi-writer-js type definitions seem incorrect.
         // @ts-ignore
         const track = new MidiWriter.Track();
 
-        // トラック名を設定
+        // Set the track name
         if (trackData.name) {
           track.addTrackName(trackData.name);
         }
 
-        // テンポを設定
+        // Set the tempo
         const tempo = composition.bpm || composition.tempo || 120;
         track.setTempo(tempo);
 
-        // 拍子記号を設定
+        // Set the time signature
         const timeSignature = composition.timeSignature || { numerator: 4, denominator: 4 };
         track.setTimeSignature(timeSignature.numerator, timeSignature.denominator);
 
-        // 楽器を設定
+        // Set the instrument
         if (trackData.instrument !== undefined) {
-          // midi-writer-jsの型ファイルがおかしいっぽい。
+          // The midi-writer-js type definitions seem incorrect.
           // @ts-ignore
           track.addEvent(new MidiWriter.ProgramChangeEvent({
             instrument: trackData.instrument,
@@ -393,13 +393,13 @@ class MidiMcpServer {
           }));
         }
 
-        // ノートを追加
+        // Add notes
         trackData.notes.forEach(note => {
           const pitch = this.noteToMidiNumber(note.pitch);
           const velocity = note.velocity !== undefined ? note.velocity : 100;
           const channel = note.channel !== undefined ? note.channel % 16 : trackIndex % 16;
 
-          // beatが指定されている場合はそれを使用、そうでなければstartTimeまたはtimeを使用
+          // Use beat if provided, otherwise use startTime or time
           let wait;
           if (note.beat !== undefined) {
             wait = this.convertBeatToWait(note.beat, composition.bpm);
@@ -408,7 +408,7 @@ class MidiMcpServer {
             wait = `T${Math.round(startTime * 0.5)}`;
           }
 
-          // midi-writer-jsの型ファイルがおかしいっぽい。
+        // The midi-writer-js type definitions seem incorrect.
           // @ts-ignore
           track.addEvent(new MidiWriter.NoteEvent({
             pitch: [pitch],
@@ -422,11 +422,11 @@ class MidiMcpServer {
         tracks.push(track);
       });
 
-      // midi-writer-jsの型ファイルがおかしいっぽい。
+      // The midi-writer-js type definitions seem incorrect.
       // @ts-ignore
       const writer = new MidiWriter.Writer(tracks);
 
-      // 出力パスの処理
+      // Handle the output path
       let outputFilePath;
       if (path.isAbsolute(outputPath)) {
         outputFilePath = outputPath;
