@@ -209,6 +209,7 @@ class MidiMcpServer {
                   if (typeof note.duration === 'number') {
                     // Convert numeric durations to the appropriate string
                     switch (note.duration) {
+                      case 0.0625: note.duration = '64'; break; // 64th note
                       case 0.125: note.duration = '32'; break;
                       case 0.25: note.duration = '16'; break;
                       case 0.5: note.duration = '8'; break;
